@@ -50,7 +50,9 @@ cd src/MarsRoverPhotos.Cli
 dotnet run
 ```
 
-Reads `dates.txt` from the repository root by default and prints a summary table:
+Reads `dates.txt` from the repository root by default and prints a summary table. This is the
+actual output captured from a real run against the live NASA endpoint while `DEMO_KEY` was
+rate-limited (see [the note below](#a-note-on-the-nasa-api-during-development)):
 
 ```
 Mars rover photo run: curiosity
@@ -59,15 +61,22 @@ Output folder: C:\...\mars-rover-photos\photos
 
  #  INPUT           PARSED      DOWNLOADED  SKIPPED  FAILED  FOLDER
 -------------------------------------------------------------------
- 1  02/27/17        2017-02-27           5        0       0  photos\2017-02-27
- 2  June 2, 2018    2018-06-02           5        0       0  photos\2018-06-02
- 3  Jul-13-2016     2016-07-13           5        0       0  photos\2016-07-13
+ 1  02/27/17        2017-02-27           0        0       0  photos\2017-02-27
+    ! The NASA request for 2017-02-27 timed out after 1s.
+ 2  June 2, 2018    2018-06-02           0        0       0  photos\2018-06-02
+    ! The NASA request for 2018-06-02 timed out after 1s.
+ 3  Jul-13-2016     2016-07-13           0        0       0  photos\2016-07-13
+    ! The NASA request for 2016-07-13 timed out after 1s.
  4  April 31, 2018  INVALID              0        0       0  -
     ! 'April 31, 2018' looks like a date, but it is not a real one: April 2018 has 30 days, so day 31 does not exist.
 
-Totals: 4 dates, 3 valid, 1 invalid, 15 downloaded, 0 already present, 0 failed
-Elapsed: 4.32 s
+Totals: 4 dates, 3 valid, 1 invalid, 0 downloaded, 0 already present, 0 failed
+Elapsed: 9.15 s
 ```
+
+With a personal API key instead of the exhausted `DEMO_KEY`, the three valid dates each report a
+non-zero `DOWNLOADED` count (NASA permitting; not every date has Curiosity photos) and no `!` error
+line, and `photos/2017-02-27/`, `photos/2018-06-02/` and `photos/2016-07-13/` are populated on disk.
 
 Useful switches:
 
