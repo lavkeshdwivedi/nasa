@@ -4,6 +4,12 @@
     <ProjectReference Include="..\MarsRoverPhotos.Core\MarsRoverPhotos.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Same sample input the CLI links, so Input:DatesFilePath can stay a plain relative path
+         and GET /api/run works straight after a clone or inside the container image. -->
+    <Content Include="..\..\dates.txt" Link="dates.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>

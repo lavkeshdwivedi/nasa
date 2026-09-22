@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mars Rover Photos</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6f7;
+    --card: #ffffff;
+    --text: #1b1b1f;
+    --muted: #61616b;
+    --line: #dcdce1;
+    --accent: #b4522c;
+    --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a;
+      --card: #202024;
+      --text: #ececf0;
+      --muted: #9a9aa4;
+      --line: #33333a;
+      --accent: #e07a51;
+      --bad: #f2837b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 60rem; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+  p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+  label { display: block; font-weight: 600; margin-bottom: .4rem; }
+  textarea {
+    width: 100%; min-height: 8rem; padding: .75rem; resize: vertical;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem;
+  }
+  .row { display: flex; gap: .75rem; align-items: center; margin: .75rem 0 1.5rem; flex-wrap: wrap; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: .6rem 1.2rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  button[disabled] { opacity: .55; cursor: progress; }
+  .status { color: var(--muted); font-size: .9rem; }
+  .status.error { color: var(--bad); }
+  .summary {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: .9rem 1rem; margin-bottom: 1.25rem; font-size: .95rem;
+  }
+  .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 1rem; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .card h2 { font-size: 1rem; margin: 0; display: flex; justify-content: space-between; gap: .5rem; }
+  .card .num { color: var(--muted); font-weight: 400; }
+  .date { color: var(--muted); font-size: .9rem; }
+  .counts { display: flex; gap: 1rem; font-size: .9rem; }
+  .counts b { display: block; font-size: 1.3rem; }
+  .folder {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .8rem; color: var(--muted); word-break: break-all;
+  }
+  .errors { margin: 0; padding-left: 1.1rem; color: var(--bad); font-size: .9rem; }
+  .card.invalid { border-color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mars Rover Photos</h1>
+  <p class="lede">One messy date per line. The API parses them, asks NASA for Curiosity photos and downloads them.</p>
+
+  <label for="dates">Dates</label>
+  <textarea id="dates" spellcheck="false">02/27/17
+June 2, 2018
+Jul-13-2016
+April 31, 2018</textarea>
+
+  <div class="row">
+    <button id="run" type="button">Run</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div id="summary" class="summary" hidden></div>
+  <div id="results" class="grid"></div>
+</main>
+
+<script>
+  const datesEl = document.getElementById('dates');
+  const runEl = document.getElementById('run');
+  const statusEl = document.getElementById('status');
+  const summaryEl = document.getElementById('summary');
+  const resultsEl = document.getElementById('results');
+
+  runEl.addEventListener('click', run);
+
+  async function run() {
+    const dates = datesEl.value.split('\n').map(line => line.trim()).filter(Boolean);
+    if (dates.length === 0) {
+      setStatus('Enter at least one date.', true);
+      return;
+    }
+
+    runEl.disabled = true;
+    setStatus('Running, downloads can take a few seconds...');
+    resultsEl.replaceChildren();
+    summaryEl.hidden = true;
+
+    try {
+      const response = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates })
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        // Both the 400 validation response and the 500 handler return problem details.
+        throw new Error(payload.detail || payload.title || `Request failed (${response.status})`);
+      }
+
+      render(payload);
+      setStatus('Done.');
+    } catch (error) {
+      setStatus(error.message, true);
+    } finally {
+      runEl.disabled = false;
+    }
+  }
+
+  function setStatus(text, isError = false) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('error', isError);
+  }
+
+  function render(report) {
+    const seconds = (new Date(report.completedAt) - new Date(report.startedAt)) / 1000;
+    summaryEl.textContent =
+      `${report.rover} - ${report.totalValidDates} of ${report.totalDatesProcessed} dates parsed, ` +
+      `${report.totalPhotosDownloaded} downloaded, ${report.totalPhotosSkipped} already on disk, ` +
+      `${report.totalPhotosFailed} failed, in ${seconds.toFixed(1)}s`;
+    summaryEl.hidden = false;
+
+    resultsEl.replaceChildren(...report.results.map(card));
+  }
+
+  function card(result) {
+    const el = document.createElement('div');
+    el.className = result.isValid ? 'card' : 'card invalid';
+
+    const heading = document.createElement('h2');
+    heading.append(text('span', result.rawInput), text('span', `#${result.lineNumber}`, 'num'));
+    el.append(heading);
+
+    el.append(text('div', result.earthDate ?? 'could not be parsed', 'date'));
+
+    if (result.isValid) {
+      const counts = document.createElement('div');
+      counts.className = 'counts';
+      counts.append(
+        count(result.photosDownloaded, 'downloaded'),
+        count(result.photosSkipped, 'skipped'),
+        count(result.photosFailed, 'failed')
+      );
+      el.append(counts);
+    }
+
+    // The RunReport carries counts and a folder path but no file names, so there is nothing to build
+    // a /photos/{date}/{file} URL from. Showing the folder beats rendering broken <img> tags.
+    if (result.folderPath) {
+      el.append(text('div', result.folderPath, 'folder'));
+    }
+
+    if (result.errors && result.errors.length > 0) {
+      const list = document.createElement('ul');
+      list.className = 'errors';
+      for (const message of result.errors) {
+        list.append(text('li', message));
+      }
+      el.append(list);
+    }
+
+    return el;
+  }
+
+  function count(value, label) {
+    const el = document.createElement('div');
+    el.append(text('b', value), document.createTextNode(label));
+    return el;
+  }
+
+  function text(tag, value, className) {
+    const el = document.createElement(tag);
+    el.textContent = value;
+    if (className) el.className = className;
+    return el;
+  }
+</script>
+</body>
+</html>
