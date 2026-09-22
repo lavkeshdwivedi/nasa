@@ -8,6 +8,15 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The host reads configuration from the executable folder, so the file has to land there. -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- The sample input lives at the repository root so the API project and the tests can
+         share one copy. Linking it into the output keeps the configured path relative. -->
+    <Content Include="..\..\dates.txt" Link="dates.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
