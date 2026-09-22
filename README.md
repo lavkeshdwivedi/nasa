@@ -30,7 +30,7 @@ You need the [.NET 9 SDK](https://dotnet.microsoft.com/download).
 ### Get a NASA API key
 
 `DEMO_KEY` works but is rate limited to roughly 30 requests/hour/IP, shared across everyone
-currently using it — in practice it is often already exhausted. Get a free personal key at
+currently using it, and in practice it is often already exhausted. Get a free personal key at
 <https://api.nasa.gov> (instant, just an email address) and set it as an environment variable.
 **The key is never hardcoded anywhere in this repo**; `appsettings.json` only ever ships the
 `DEMO_KEY` placeholder.
@@ -44,7 +44,7 @@ export NASA_API_KEY=your-real-key
 ```
 
 Or copy [`.env.example`](.env.example) to `.env`, fill in your key, and load it into your shell
-before running (`.env` is gitignored and is never read by the app directly — there is no dotenv
+before running (`.env` is gitignored and is never read by the app directly: there is no dotenv
 dependency here, this is just a documented, uncommitted place to keep the value):
 
 ```
@@ -171,14 +171,14 @@ At the time of writing, `api.nasa.gov/mars-photos/api/v1` (its backend is Heroku
 intermittently returning `404 No such app` from the router rather than a real API response. This is
 not specific to one key or one date: `DEMO_KEY` currently gets a proper `429 OVER_RATE_LIMIT`
 (a healthy backend, just out of quota), while a valid personal key gets a consistent `404 No such
-app` on the exact same endpoint for both `earth_date` and `sol` queries — confirmed with a direct
+app` on the exact same endpoint for both `earth_date` and `sol` queries, confirmed with a direct
 HTTP call outside this project entirely, and confirmed the key itself is fine by calling
 `GET /planetary/apod` with it successfully. That pattern (different keys landing on different
 backend health) points to NASA's own routing sending some traffic to a dead instance, not to
 anything in this codebase, this key, or the request it sends. It may well have cleared by the time
 you read this. Whether or not it has, every layer of this project (the NASA client, the pipeline,
 both hosts) treats a `429`, a `404`, a timeout, or any other API failure as a per-date error to
-report, never a crash — that behavior is exercised directly by `NasaMarsPhotoClientTests` and
+report, never a crash. That behavior is exercised directly by `NasaMarsPhotoClientTests` and
 `PhotoPipelineTests`, and was verified manually against the live endpoint, in both failure modes,
 during development.
 

@@ -41,7 +41,7 @@ the real (rate-limited) NASA endpoint, and fixed the issues that surfaced from t
 The NASA client and the photo downloader were both given `HttpClient`s wired through
 `Microsoft.Extensions.Http.Resilience`'s `AddStandardResilienceHandler` (retry + timeout + circuit
 breaker). Both were written to catch `HttpRequestException` and `TaskCanceledException` for network
-failures, since that is what a plain `HttpClient` throws — but the resilience handler's own timeout
+failures, since that is what a plain `HttpClient` throws, but the resilience handler's own timeout
 and circuit-breaker strategies throw **`Polly.Timeout.TimeoutRejectedException`** and
 **`Polly.CircuitBreaker.BrokenCircuitException`** instead, which are neither of those types. Neither
 client caught them.
@@ -53,7 +53,7 @@ CLI run against `api.nasa.gov` produced:
 Fatal: TimeoutRejectedException: The operation didn't complete within the allowed timeout of '00:02:30'.
 ```
 
-instead of the intended per-date error and a continued run — exactly the "handle network failures
+instead of the intended per-date error and a continued run, exactly the "handle network failures
 gracefully" requirement, failing. The fix was to add explicit `catch (TimeoutRejectedException)` and
 `catch (BrokenCircuitException)` blocks in both `NasaMarsPhotoClient.GetPhotosAsync` and
 `HttpPhotoDownloader.DownloadAsync`, wrapping them the same way as the existing network-failure
@@ -63,7 +63,7 @@ cases. Re-running the same live scenario afterwards produced the correct behavio
 fail: MarsRoverPhotos.Core.Pipeline.PhotoPipeline[0] Line 1 2017-02-27: NASA request failed, continuing with the remaining dates
 ```
 
-— the pipeline logged the failure against that one date and moved on to the next, and the console
+The pipeline logged the failure against that one date and moved on to the next, and the console
 report rendered it as a per-date error rather than aborting the run. This is covered going forward
 by the existing failure-handling tests in `NasaMarsPhotoClientTests` and `PhotoPipelineTests`, which
 already assert that a client failure produces a per-date error rather than an unhandled exception.
@@ -89,7 +89,7 @@ already assert that a client failure produces a per-date error rather than an un
   description of the endpoint, the live endpoint was probed directly with `curl`/`Invoke-WebRequest`
   before and during development, using both `DEMO_KEY` and a real personal key. This found that
   `api.nasa.gov/mars-photos/api/v1`'s Heroku-hosted backend is intermittently returning `404 No such
-  app` from its router instead of a real response — and, surprisingly, that this varies by key: the
+  app` from its router instead of a real response, and, surprisingly, that this varies by key: the
   same endpoint gave `DEMO_KEY` a normal `429` (a healthy backend, just rate limited) while a valid
   personal key consistently hit `404` on the identical URL, for both `earth_date` and `sol` queries.
   The personal key itself was confirmed valid by calling `GET /planetary/apod` with it successfully,
