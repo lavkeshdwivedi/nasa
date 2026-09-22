@@ -43,6 +43,18 @@ $env:NASA_API_KEY = "your-real-key"
 export NASA_API_KEY=your-real-key
 ```
 
+Or copy [`.env.example`](.env.example) to `.env`, fill in your key, and load it into your shell
+before running (`.env` is gitignored and is never read by the app directly — there is no dotenv
+dependency here, this is just a documented, uncommitted place to keep the value):
+
+```
+# PowerShell
+Get-Content .env | ForEach-Object { if ($_ -match '^\s*([^#=]+)=(.*)$') { Set-Item "env:$($matches[1])" $matches[2] } }
+
+# bash
+set -a; source .env; set +a
+```
+
 ### Console app
 
 ```
@@ -155,15 +167,20 @@ docker run --rm -p 8080:8080 -e NASA_API_KEY=your-real-key -v mars-photos:/app/p
 
 ## A note on the NASA API during development
 
-At the time of writing, `api.nasa.gov/mars-photos/api/v1` briefly returned a `404 No such app`
-(its backend is Heroku-hosted and the router returned that for a sleeping/misrouted instance). That
-resolved on its own; the endpoint used by this project is the correct, documented one for the
-exercise. What is still true is that `DEMO_KEY` is heavily shared and rate limited, so a real key
-(free, instant, at <https://api.nasa.gov>) is recommended before the walkthrough. Every layer of
-this project (the NASA client, the pipeline, both hosts) is built to treat a `429`, a timeout, or
-any other API failure as a per-date error to report, never a crash — that behavior is exercised
-directly by `NasaMarsPhotoClientTests` and `PhotoPipelineTests`, and was also verified manually
-against the live, rate-limited endpoint during development.
+At the time of writing, `api.nasa.gov/mars-photos/api/v1` (its backend is Heroku-hosted) is
+intermittently returning `404 No such app` from the router rather than a real API response. This is
+not specific to one key or one date: `DEMO_KEY` currently gets a proper `429 OVER_RATE_LIMIT`
+(a healthy backend, just out of quota), while a valid personal key gets a consistent `404 No such
+app` on the exact same endpoint for both `earth_date` and `sol` queries — confirmed with a direct
+HTTP call outside this project entirely, and confirmed the key itself is fine by calling
+`GET /planetary/apod` with it successfully. That pattern (different keys landing on different
+backend health) points to NASA's own routing sending some traffic to a dead instance, not to
+anything in this codebase, this key, or the request it sends. It may well have cleared by the time
+you read this. Whether or not it has, every layer of this project (the NASA client, the pipeline,
+both hosts) treats a `429`, a `404`, a timeout, or any other API failure as a per-date error to
+report, never a crash — that behavior is exercised directly by `NasaMarsPhotoClientTests` and
+`PhotoPipelineTests`, and was verified manually against the live endpoint, in both failure modes,
+during development.
 
 ## `AI_NOTES.md`
 

@@ -86,9 +86,15 @@ already assert that a client failure produces a per-date error rather than an un
   development, not application code, but it's worth recording as the reason for a couple of stalled
   build attempts during integration.
 - **Independent verification of the NASA API itself.** Rather than trusting the exercise's written
-  description of the endpoint, the live endpoint was probed directly with `curl` before and during
-  development. This caught a transient `404 No such app` from the Heroku-hosted backend behind
-  `api.nasa.gov/mars-photos/api/v1` (which resolved on its own into the expected `429` rate-limit
-  response), confirmed that a personal API key is genuinely needed since `DEMO_KEY` was already
-  exhausted by the time of testing, and confirmed image URLs returned by the API are downloadable
-  as-is.
+  description of the endpoint, the live endpoint was probed directly with `curl`/`Invoke-WebRequest`
+  before and during development, using both `DEMO_KEY` and a real personal key. This found that
+  `api.nasa.gov/mars-photos/api/v1`'s Heroku-hosted backend is intermittently returning `404 No such
+  app` from its router instead of a real response — and, surprisingly, that this varies by key: the
+  same endpoint gave `DEMO_KEY` a normal `429` (a healthy backend, just rate limited) while a valid
+  personal key consistently hit `404` on the identical URL, for both `earth_date` and `sol` queries.
+  The personal key itself was confirmed valid by calling `GET /planetary/apod` with it successfully,
+  which narrowed the problem to NASA's own request routing for the mars-photos service rather than
+  the key, the request shape, or anything in this codebase. This was also the origin of the CLI/API
+  smoke-testing that surfaced the `TimeoutRejectedException` bug above; without probing the real,
+  imperfect endpoint directly, that gap would only have shown up once a personal key hit it, which
+  in this case turned out to still fail, just with a different, equally ungraceful, exception type.
